@@ -1,0 +1,1083 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPA Ana Paula Merêncio — Simulador & Prontuário</title>
+<style>
+  :root{ --bg:#faf6f4; --panel:#ffffff; --ink:#2b2431; --muted:#8a8091; --rose:#c98a9b; --rose-d:#a85d72; --nude:#e8d3cc; --line:#ece3e0; --ok:#4a9b7f; --warn:#c98a3a; --hi:#b8455f; --r:12px; }
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--ink);}
+  header{padding:18px 26px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:#fff;}
+  .header-brand{display:flex;align-items:center;gap:14px;}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--rose),var(--rose-d));display:grid;place-items:center;color:#fff;font-size:20px}
+  .wrap{max-width:1180px;margin:20px auto;padding:0 20px 60px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:20px;}
+  h2{font-size:16px;color:var(--rose-d);margin-top:0;}
+  
+  /* Tabs */
+  .maintabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .mt{padding:11px 16px;border:1px solid var(--line);background:#f6eeeb;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;flex:1;text-align:center}
+  .mt.active{background:var(--rose-d);color:#fff;border-color:var(--rose-d)}
+  .view{display:none;} .view.active{display:block;}
+
+  /* Formulários */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px;} @media(max-width:768px){.grid2{grid-template-columns:1fr;}}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;font-weight:bold;}
+  input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:inherit;}
+  .btn{border:0;border-radius:8px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;background:var(--rose-d);color:#fff;width:100%; transition: opacity 0.2s;}
+  .btn:disabled{opacity: 0.5; cursor: not-allowed;}
+  .btn-ok{background:var(--ok);}
+  .btn-print{background:#2b2431; color:#fff;}
+  .imc-box{margin-top:12px;padding:12px;border-radius:12px;background:#f8f1ee;display:flex;justify-content:space-between;align-items:center}
+  .imc-val{font-size:24px;font-weight:700}
+  
+  /* Câmera e IA */
+  .stage{position:relative;aspect-ratio:4/3;background:#1c1620;border-radius:14px;overflow:hidden;max-width:640px;margin:0 auto}
+  video,canvas.feed,img.feed{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .overlay, .doll{position:absolute;inset:0;pointer-events:none;z-index:3;display:grid;place-items:center}
+  .doll svg{width:55%;height:80%;opacity:.55}
+  .scanline{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--rose),transparent);box-shadow:0 0 14px 3px rgba(201,138,155,.7);z-index:4;display:none}
+  .pose-tabs{display:flex;gap:8px;margin:12px 0;justify-content:center}
+  .pose-tabs button{padding:9px 20px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;}
+  .pose-tabs button.active{border-color:var(--rose);background:#fdf6f8;color:var(--rose-d);font-weight:bold}
+  
+  /* Canvas Mapeamento */
+  #bodyCanvas{background:#fff;border:1px solid var(--line);border-radius:8px;cursor:crosshair;max-width:100%;}
+  .row{display:flex; gap:10px;}
+
+  /* Estilo do Contrato */
+  .contrato-box{background:#fff; border:1px solid var(--line); padding:30px; border-radius:8px; font-size:13px; line-height:1.6; color:#333; text-align:justify;}
+  .contrato-box h3{text-align:center; color:var(--rose-d); margin-top:0; font-size:16px;}
+  .contrato-box p{margin-bottom:12px;}
+  .contrato-highlight{font-weight:bold; color:#000; text-decoration:underline;}
+
+  /* Elementos de impressão */
+  .print-only { display: none; }
+
+  /* OVERLAY DE AUTENTICAÇÃO */
+  #auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(43, 36, 49, 0.85);
+    backdrop-filter: blur(5px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .auth-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    border: 1px solid var(--line);
+  }
+  .auth-header { text-align: center; margin-bottom: 20px; }
+  .auth-header .logo { margin: 0 auto 10px; width: 48px; height: 48px; font-size: 24px; }
+  .toggle-auth { text-align: center; margin-top: 15px; font-size: 13px; color: var(--rose-d); cursor: pointer; text-decoration: underline; font-weight: bold; }
+
+  .badge-role {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .badge-admin { background: #fdf0f2; color: #b8455f; border: 1px solid #f3c2cd; }
+  .badge-user { background: #eef6f3; color: #4a9b7f; border: 1px solid #bce2d5; }
+
+  .app-hidden { display: none !important; }
+
+  @media print {
+    body { 
+      background: #fff !important; 
+      color: #000 !important; 
+      font-size: 9.5pt !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    header, .maintabs, .btn, .pose-tabs, .stage, .row, #btnQrPix, #valorPix, #qrHolder, .no-print, #auth-overlay, #modal-editar {
+      display: none !important;
+    }
+    
+    .print-only { display: block !important; }
+    
+    .print-header {
+      text-align: center;
+      border-bottom: 2px solid var(--rose-d);
+      padding-bottom: 8px !important;
+      margin-bottom: 12px !important;
+    }
+
+    .wrap { max-width: 100% !important; margin: 0 !important; padding: 0 !important; display: block !important; }
+    
+    .card { 
+      border: 1px solid #e0e0e0 !important; 
+      padding: 10px 14px !important; 
+      margin-bottom: 10px !important; 
+      box-shadow: none !important;
+      page-break-inside: auto !important;
+      break-inside: auto !important;
+    }
+    
+    .view { display: block !important; }
+
+    #view-contrato {
+      page-break-before: always !important;
+      break-before: page !important;
+    }
+
+    .contrato-box {
+      border: none !important;
+      padding: 0 !important;
+      font-size: 9pt !important;
+      line-height: 1.4 !important;
+    }
+
+    h2 { font-size: 11pt !important; color: var(--rose-d) !important; margin-top: 6px !important; margin-bottom: 4px !important; }
+    label { font-size: 8pt !important; margin: 2px 0 1px !important; color: #444 !important; }
+    
+    input, select, textarea {
+      border: none !important;
+      border-bottom: 1px dashed #ccc !important;
+      background: transparent !important;
+      font-size: 9.5pt !important;
+      font-weight: bold !important;
+      padding: 2px 0 !important;
+    }
+    
+    .signature-area {
+      display: flex !important;
+      justify-content: space-between;
+      margin-top: 30px !important;
+      padding-top: 10px !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    
+    .signature-line {
+      width: 45%;
+      border-top: 1px solid #000;
+      text-align: center;
+      font-size: 8.5pt;
+      padding-top: 4px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- OVERLAY DE LOGIN / REGISTRO -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-header">
+      <div class="logo">✦</div>
+      <h2 id="auth-title" style="margin: 5px 0; font-size: 20px;">Acesso ao Sistema</h2>
+      <small style="color: var(--muted);" id="auth-subtitle">Entre com suas credenciais de usuário</small>
+    </div>
+
+    <form id="auth-form">
+      <div>
+        <label>Usuário</label>
+        <input type="text" id="auth-usuario" placeholder="Digite seu usuário" required>
+      </div>
+      <div id="box-email" style="display: none;">
+        <label>E-mail Corporativo</label>
+        <input type="email" id="auth-email" placeholder="seu@email.com">
+      </div>
+      <div id="box-role" style="display: none;">
+        <label>Tipo de Perfil</label>
+        <select id="auth-role">
+          <option value="user">Usuário Comum (Atendimento / Estética)</option>
+          <option value="admin">Administrador (Acesso Total)</option>
+        </select>
+      </div>
+      <div>
+        <label>Senha</label>
+        <input type="password" id="auth-senha" placeholder="••••••••" required>
+      </div>
+
+      <button type="submit" id="auth-btn" class="btn" style="margin-top: 20px;">Entrar no Sistema</button>
+    </form>
+
+    <div class="toggle-auth" id="toggle-auth-btn">Criar nova conta no sistema</div>
+  </div>
+</div>
+
+<header id="main-header" class="app-hidden">
+  <div class="header-brand">
+    <div class="logo">✦</div>
+    <div>
+      <h1 style="margin:0;font-size:18px;">SPA Ana Paula Merêncio</h1>
+      <small style="color:var(--muted)">
+        Logado como: <strong id="logged-user-display" style="color:var(--rose-d);">—</strong> 
+        <span id="logged-role-badge" class="badge-role badge-user">—</span>
+      </small>
+    </div>
+  </div>
+  <div style="display:flex; gap:10px;">
+    <button class="btn btn-print no-print" style="width:auto; padding:8px 16px; font-size:13px;" onclick="imprimirPDF()">🖨️ Baixar / Imprimir PDF Completo</button>
+    <button class="btn no-print" style="width:auto; padding:8px 16px; font-size:13px; background:#555;" onclick="fazerLogout()">🚪 Sair</button>
+  </div>
+</header>
+
+<div class="wrap app-hidden" id="main-wrap">
+  <div class="print-only print-header">
+    <h1 style="margin:0; font-size:20px; color:var(--rose-d);">SPA Ana Paula Merêncio</h1>
+    <p style="margin:2px 0; font-size:11px; font-weight:bold; color:#444;">FICHA DE ANAMNESE E PRONTUÁRIO ESTÉTICO</p>
+    <small id="print-date" style="color:#666; font-size:9pt;"></small>
+  </div>
+
+  <nav class="maintabs">
+    <button class="mt active" onclick="showTab('view-cadastro', this)">1. Cadastro & Saúde</button>
+    <button class="mt" onclick="showTab('view-camera', this)">2. Escaneamento (IA)</button>
+    <button class="mt" onclick="showTab('view-mapa', this)">3. Mapeamento Visual</button>
+    <button class="mt" onclick="showTab('view-proc', this)">4. Procedimento & Salvar</button>
+    <button class="mt" onclick="showTab('view-contrato', this)">5. Contrato de Serviços</button>
+    <button class="mt" onclick="showTab('view-consulta', this)">6. Consultar & Gerenciar</button>
+  </nav>
+
+  <!-- ABA 1: CADASTRO -->
+  <div id="view-cadastro" class="view active card">
+    <h2>1. Dados do Paciente</h2>
+    <div class="grid2">
+      <div><label>Nome Completo *</label><input type="text" id="nome" oninput="atualizarContrato()"></div>
+      <div><label>CPF *</label><input type="text" id="cpf" oninput="atualizarContrato()"></div>
+      <div><label>Endereço</label><input type="text" id="endereco" oninput="atualizarContrato()"></div>
+      <div><label>Tel. Emergência</label><input type="text" id="telefone"></div>
+      <div><label>Idade</label><input type="number" id="idade"></div>
+      <div><label>Plano de Saúde?</label><select id="plano"><option value="false">Não</option><option value="true">Sim</option></select></div>
+    </div>
+    
+    <h2 style="margin-top:15px;">Dados Corporais (Cálculo Automático)</h2>
+    <div class="grid2">
+      <div><label>Peso (kg)</label><input type="number" id="peso" value="70" step="0.1"></div>
+      <div><label>Altura (m)</label><input type="number" id="altura" value="1.65" step="0.01"></div>
+      <div><label>Meta de perda (kg)</label><input type="number" id="meta" value="0"></div>
+      <div class="imc-box">
+        <div><div style="font-size:11px;color:var(--muted)">IMC Atual</div><div class="imc-val" id="imcVal">—</div></div>
+        <span id="imcChip" style="font-size:12px; font-weight:bold;">—</span>
+      </div>
+    </div>
+
+    <h2 style="margin-top:15px;">Anamnese Clínica</h2>
+    <div class="grid2">
+      <div><label>Doenças Crônicas?</label><select id="doencas"><option value="false">Não</option><option value="true">Sim</option></select></div>
+      <div><label>Alergias?</label><select id="alergias"><option value="false">Não</option><option value="true">Sim</option></select></div>
+      <div><label>Fez Cirurgias?</label><select id="cirurgias" onchange="document.getElementById('box-cirurgias').style.display=this.value==='true'?'block':'none'"><option value="false">Não</option><option value="true">Sim</option></select></div>
+      <div id="box-cirurgias" style="display:none;"><label>Quais cirurgias?</label><input type="text" id="quais_cirurgias"></div>
+    </div>
+    <label>Solicitar Exames Complementares (Opcional)</label>
+    <textarea id="exames" rows="2"></textarea>
+
+    <div class="no-print" style="display:flex; gap:12px; margin-top:25px; border-top:1px solid var(--line); padding-top:20px;">
+      <button class="btn btn-ok btn-save" type="button" style="flex:2; font-size:15px;" onclick="salvarBanco()">💾 Salvar Ficha no Sistema</button>
+      <button class="btn btn-print" type="button" style="flex:1; font-size:15px;" onclick="imprimirPDF()">🖨️ PDF / Imprimir</button>
+      <button class="btn" type="button" style="flex:1; background:#8a8091; font-size:15px;" onclick="limparCadastro()">🗑️ Limpar</button>
+    </div>
+  </div>
+
+  <!-- ABA 2: CÂMERA -->
+  <div id="view-camera" class="view card">
+    <h2>2. Análise por Imagem e Inteligência Artificial</h2>
+    <div class="pose-tabs no-print" id="poseTabs">
+      <button data-pose="frontal" class="active">🙂 Frontal</button>
+      <button data-pose="lateral">🙄 Perfil</button>
+      <button data-pose="colo">👤 Colo</button>
+    </div>
+    <div class="stage no-print" id="stage">
+      <video id="video" autoplay playsinline muted></video>
+      <img id="still" class="feed" style="display:none" />
+      <canvas id="mesh" class="overlay"></canvas>
+      <div class="doll" id="doll"></div>
+      <div class="scanline" id="scanline"></div>
+    </div>
+    <div class="row no-print" style="margin-top:15px; justify-content:center; max-width:640px; margin:15px auto">
+      <button class="btn" style="background:#8a8091" id="btnCam">📷 Ligar Câmera</button>
+      <button class="btn" id="btnCap">📸 Capturar Pose</button>
+    </div>
+    <button class="btn no-print" id="btnAnalyze" style="margin-top:20px" disabled>🧠 Analisar Rosto e Gerar Plano</button>
+    <div id="ia-results" style="display:none; margin-top:20px; border-top:1px solid var(--line); padding-top:20px">
+      <h3>Métricas Detectadas</h3>
+      <div id="metricsBox" style="font-size:13px"></div>
+      <h3 style="margin-top:15px;">Plano Sugerido pela IA</h3>
+      <div id="planBox" style="font-size:13px; background:#fdf6f8; padding:10px; border-radius:8px"></div>
+    </div>
+  </div>
+
+  <!-- ABA 3: MAPEAMENTO -->
+  <div id="view-mapa" class="view card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:15px; border-bottom:1px solid var(--line); padding-bottom:15px;">
+      <div>
+        <h2 style="margin:0; font-size:18px;">3. Prontuário Gráfico de Aplicação</h2>
+        <span style="font-size:12px; color:var(--muted)">Pontos marcados para aplicação de substâncias.</span>
+      </div>
+      <div class="no-print" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="background:#f3e9e6; border-radius:10px; padding:3px; display:flex;">
+          <button id="btnFem" class="btn" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:bold; background:var(--rose-d); color:#fff;" onclick="setGender('F')">♀ Feminino</button>
+          <button id="btnMasc" class="btn" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:bold; background:transparent; color:var(--muted);" onclick="setGender('M')">♂ Masculino</button>
+        </div>
+        <div style="background:#f3e9e6; border-radius:10px; padding:3px; display:flex;">
+          <button id="btnVistaFace" class="btn" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:bold; background:var(--rose-d); color:#fff;" onclick="setVista('face')">👤 Face Ampliada</button>
+          <button id="btnVistaCorpo" class="btn" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:bold; background:transparent; color:var(--muted);" onclick="setVista('corpo')">🧍 Corpo (Frente & Costas)</button>
+        </div>
+      </div>
+    </div>
+    <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px; padding:10px 16px; background:#fff; border:1px solid var(--line); border-radius:10px;">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <span style="font-size:12px; font-weight:bold; color:var(--muted)">Substância:</span>
+        <button class="tool-btn active" data-color="#d6335c" style="border:2px solid #d6335c; color:#d6335c; background:#fff; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer;">🔴 Toxina Botulínica</button>
+        <button class="tool-btn" data-color="#2b7fff" style="border:1px solid var(--line); color:var(--muted); background:#fff; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer;">🔵 Preenchedor (Ác. Hialurônico)</button>
+        <button class="tool-btn" data-color="#00a86b" style="border:1px solid var(--line); color:var(--muted); background:#fff; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer;">🟢 Bioestimulador / Fios</button>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" style="background:#8a8091; padding:8px 14px; width:auto; font-size:12px;" onclick="undoMark()">↩ Desfazer Último</button>
+        <button class="btn" style="background:#8a8091; padding:8px 14px; width:auto; font-size:12px;" onclick="clearCanvas()">🗑 Limpar Tudo</button>
+      </div>
+    </div>
+    <div style="width:100%; text-align:center; background:#ffffff; border:1px solid var(--line); border-radius:12px; padding:10px;">
+      <canvas id="bodyCanvas" width="1000" height="700" style="width:100%; height:auto; display:block; cursor:crosshair; background:#ffffff; border-radius:8px;"></canvas>
+    </div>
+  </div>
+
+  <!-- ABA 4: PROCEDIMENTO & PIX -->
+  <div id="view-proc" class="view card">
+    <h2>4. Procedimento e Conclusão</h2>
+    <label>Procedimento Realizado (Detalhes)</label>
+    <textarea id="procedimento" rows="3" oninput="atualizarContrato()"></textarea>
+    
+    <label>Intercorrências</label>
+    <textarea id="intercorrencias" rows="2"></textarea>
+    
+    <label>Parecer / Conclusão do Profissional</label>
+    <textarea id="conclusao" rows="2"></textarea>
+
+    <div class="no-print" style="margin-top:20px; padding:20px; border:1px dashed var(--rose-d); border-radius:8px; text-align:center; background:#fff;">
+      <h3>Receber via PIX QR Code</h3>
+      <input type="number" id="valorPix" placeholder="Valor (Ex: 250.00)" style="max-width:220px; margin:0 auto 12px;" oninput="document.getElementById('c_preco').value=this.value; atualizarContrato();">
+      <button class="btn" id="btnQrPix" style="width:auto; padding:10px 24px;" onclick="gerarQrCode()">Gerar QR Code PIX</button>
+      <div id="qrHolder" style="margin-top:15px;"></div>
+    </div>
+
+    <div class="no-print" style="display:flex; gap:12px; margin-top:20px;">
+      <button class="btn btn-ok btn-save" style="flex:2; font-size:16px" onclick="salvarBanco()">💾 Salvar no Sistema</button>
+      <button class="btn btn-print" style="flex:1; font-size:16px" onclick="imprimirPDF()">🖨️ Baixar PDF Completo</button>
+    </div>
+  </div>
+
+  <!-- ABA 5: CONTRATO DE SERVIÇOS ESTÉTICOS -->
+  <div id="view-contrato" class="view card">
+    <div class="no-print" style="background:#f8f1ee; padding:15px; border-radius:8px; margin-bottom:20px;">
+      <h3 style="margin-top:0; color:var(--rose-d);">Configurações Adicionais do Contrato</h3>
+      <div class="grid2">
+        <div><label>Profissão do Paciente</label><input type="text" id="c_profissao" placeholder="Ex: Advogada" oninput="atualizarContrato()"></div>
+        <div><label>COREN da Profissional</label><input type="text" id="c_coren" placeholder="Ex: COREN-PE 123456" oninput="atualizarContrato()"></div>
+        <div><label>Tratamento / Sessões Contratadas</label><input type="text" id="c_tratamento" placeholder="Ex: 5 Sessões de Harmonização Facial" oninput="atualizarContrato()"></div>
+        <div><label>Valor Total Ajustado (R$)</label><input type="text" id="c_preco" placeholder="Ex: 1.500,00" oninput="atualizarContrato()"></div>
+      </div>
+      <button class="btn btn-print" style="margin-top:15px; width:auto;" onclick="imprimirPDF()">🖨️ Imprimir Termo / Salvar PDF</button>
+    </div>
+
+    <div class="contrato-box">
+      <h3>CONTRATO DE PRESTAÇÃO DE SERVIÇOS ESTÉTICOS</h3>
+      <p>Pelo presente instrumento, de um lado, a <b>CONTRATADA</b>: <b>SPA ANA PAULA MERÊNCIO</b>, inscrita sob COREN/Registro nº <span id="txt_coren" class="contrato-highlight">________________</span>, e de outro lado, a <b>CONTRATANTE</b>: <span id="txt_nome" class="contrato-highlight">________________________________________</span>, Profissão: <span id="txt_profissao" class="contrato-highlight">________________</span>, inscrita no CPF sob nº <span id="txt_cpf" class="contrato-highlight">________________</span>, residente e domiciliada em <span id="txt_endereco" class="contrato-highlight">________________________________________</span>, partes qualificadas acima, têm entre si justo e contratado este instrumento com as cláusulas e condições que seguem:</p>
+
+      <p><b>OBJETO</b><br>
+      <b>Cláusula 1º</b> - Por este instrumento, a CONTRATADA, através de profissional regularmente habilitada, obriga-se a prestar serviços estéticos à CONTRATANTE, através do(s) tratamento(s) descriminado(s).<br>
+      <b>Parágrafo Primeiro</b> - A CONTRATADA obriga-se a prestar serviços de estética à CONTRATANTE, com aplicação de métodos e equipamentos próprios, objetivando o tratamento corporal/facial da CONTRATANTE, nos termos das condições gerais contidas neste instrumento.<br>
+      <b>Parágrafo Segundo</b> - Os serviços estéticos contratados compreendem a realização do número de sessões contratadas nas datas e horários de acordo com agendamento prévio.<br>
+      <b>Parágrafo Terceiro</b> - Caso haja necessidade de alteração nos horários e datas, decorrentes de algum imprevisto que impossibilite a CONTRATANTE de comparecer no horário pré-estabelecido, a mesma deverá avisar a CONTRATADA com no mínimo 12 horas de antecedência, para reagendamento.<br>
+      <b>Parágrafo Quarto</b> - Em caso de desmarcação de sessão com menos de 12 horas de antecedência ou não comparecimento, acarretará a perda da sessão.<br>
+      <b>Parágrafo Quinto</b> - Ocorrendo a hipótese do parágrafo terceiro, o reagendamento dependerá da disponibilidade da CONTRATADA.<br>
+      <b>Parágrafo Sexto</b> - Caso a CONTRATANTE não compareça nas datas e horários pré-definidos, a CONTRATADA exime-se de qualquer responsabilidade quanto aos resultados esperados, restando rescindido o presente contrato, sendo devidos os valores contratados integralmente como compensação por perdas e danos.<br>
+      <b>Parágrafo Sétimo</b> - A CONTRATANTE adquire o(s) seguinte(s) tratamento(s) e número de sessões: <span id="txt_tratamento" class="contrato-highlight">________________________________________________</span>.</p>
+
+      <p><b>DO PREÇO</b><br>
+      <b>Cláusula 2º</b> - O preço livremente ajustado para a realização dos procedimentos descritos na Cláusula 1º é de <b>R$ <span id="txt_preco" class="contrato-highlight">________</span></b>, devidamente convencionado entre as partes.</p>
+
+      <p><b>CONDIÇÕES GERAIS</b><br>
+      <b>Cláusula 3º</b> - A CONTRATANTE declara ter sido previamente informada sobre todos os benefícios, riscos, indicações, contraindicações, principais efeitos colaterais e advertências gerais relacionadas aos procedimentos contratados.<br>
+      <b>Cláusula 4º</b> - A CONTRATANTE declara que todos os termos técnicos foram explicados e que todas as dúvidas foram sanadas.<br>
+      <b>Cláusula 5º</b> - A CONTRATANTE compromete-se a seguir todas as orientações e, havendo necessidade, fazer uso de produtos contidos em sua prescrição domiciliar.<br>
+      <b>Cláusula 6º</b> - A CONTRATANTE declara ciência de que os resultados dependem da rigorosa frequência às sessões, disciplina alimentar e hábitos individuais, imunes ao controle exclusivo da contratada.<br>
+      <b>Cláusula 7º</b> - O prazo deste instrumento inicia-se na data da primeira sessão agendada e seu término dar-se-á de acordo com o protocolo indicado.<br>
+      <b>Cláusula 8º</b> - A CONTRATANTE não poderá rescindir o presente contrato alegando insatisfação com o resultado.<br>
+      <b>Cláusula 9º</b> - Atrasos da CONTRATANTE reduzirão o tempo da sessão na mesma proporção do atraso.<br>
+      <b>Cláusula 10º</b> - O serviço contratado não poderá ser trocado por outros serviços oferecidos pela empresa.<br>
+      <b>Parágrafo Primeiro</b> - A CONTRATANTE poderá exercer o direito de arrependimento no prazo de 7 (sete) dias corridos a contar da assinatura deste instrumento, suportando multa de 30% do valor total. Após este prazo, a multa será de 70%. Caso já tenha iniciado o tratamento, NÃO PODERÁ SOLICITAR REEMBOLSO.<br>
+      <b>Cláusula 11º</b> - A CONTRATANTE autoriza a veiculação de sua imagem em fotos e vídeos nas redes sociais (Instagram, Facebook) administradas pelo SPA Ana Paula Merêncio, abrindo mão de direitos de imagem ou remuneração.</p>
+
+      <p style="text-align:right; margin-top:25px;">Recife, <span id="txt_data_hoje">__ de _________ de 2026</span>.</p>
+
+      <div class="signature-area" style="display:flex; justify-content:space-between; margin-top:40px;">
+        <div class="signature-line" style="width:45%; border-top:1px solid #000; text-align:center; padding-top:5px;">
+          Assinatura do Cliente (CONTRATANTE)
+        </div>
+        <div class="signature-line" style="width:45%; border-top:1px solid #000; text-align:center; padding-top:5px;">
+          SPA Ana Paula Merêncio (CONTRATADA)
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ABA 6: CONSULTAR & GERENCIAR CLIENTES -->
+  <div id="view-consulta" class="view card">
+    <h2>6. Consulta e Gerenciamento de Clientes — SPA Ana Paula Merêncio</h2>
+    <p style="font-size:13px; color:var(--muted); margin-bottom:15px;">Consulte, pesquise e edite cadastros do SPA. A exclusão é restrita a Administradores.</p>
+
+    <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+      <input type="text" id="search-input" placeholder="🔍 Buscar por Nome Completo ou CPF..." oninput="filtrarClientes()" style="flex:1; min-width:250px;">
+      <button class="btn" style="width:auto; padding:10px 20px; background:var(--rose-d);" onclick="carregarClientes()">🔄 Atualizar Lista</button>
+    </div>
+
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+        <thead>
+          <tr style="background:#f6eeeb; border-bottom:2px solid var(--line); color:var(--rose-d);">
+            <th style="padding:12px;">Nome</th>
+            <th style="padding:12px;">CPF</th>
+            <th style="padding:12px;">Telefone</th>
+            <th style="padding:12px;">Procedimento / Tratamento</th>
+            <th style="padding:12px;">Data de Cadastro</th>
+            <th style="padding:12px; text-align:center;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lista-clientes-body">
+          <tr><td colspan="6" style="padding:15px; text-align:center; color:var(--muted);">Carregando clientes...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="print-only signature-area">
+    <div class="signature-line">Assinatura do Profissional</div>
+    <div class="signature-line">Assinatura do Paciente</div>
+  </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO DE CLIENTE -->
+<div id="modal-editar" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(3px); z-index:10000; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:#fff; border-radius:16px; width:100%; max-width:650px; padding:25px; box-shadow:0 10px 30px rgba(0,0,0,0.3); border:1px solid var(--line); max-height:90vh; overflow-y:auto;">
+    <h2 style="margin-top:0; color:var(--rose-d);">✏️ Alterar Ficha do Cliente</h2>
+    <input type="hidden" id="edit-id">
+
+    <div class="grid2">
+      <div><label>Nome Completo</label><input type="text" id="edit-nome"></div>
+      <div><label>CPF</label><input type="text" id="edit-cpf"></div>
+      <div><label>Endereço</label><input type="text" id="edit-endereco"></div>
+      <div><label>Telefone Emergência</label><input type="text" id="edit-telefone"></div>
+      <div><label>Idade</label><input type="number" id="edit-idade"></div>
+      <div><label>Peso (kg)</label><input type="number" id="edit-peso" step="0.1"></div>
+      <div><label>Altura (m)</label><input type="number" id="edit-altura" step="0.01"></div>
+      <div><label>Valor Total (R$)</label><input type="text" id="edit-valor"></div>
+    </div>
+    <label style="margin-top:10px;">Procedimento / Tratamento Contratado</label>
+    <textarea id="edit-procedimento" rows="3"></textarea>
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn btn-ok" id="btn-salvar-edicao" style="flex:1;" onclick="salvarEdicaoCliente()">💾 Salvar Alterações</button>
+      <button class="btn" style="flex:1; background:#8a8091;" onclick="fecharModalEditar()">❌ Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE_URL = window.location.origin;
+
+  let isLoginState = true;
+  let listaFichas = [];
+
+  document.getElementById('toggle-auth-btn').addEventListener('click', () => {
+    isLoginState = !isLoginState;
+    document.getElementById('auth-title').innerText = isLoginState ? 'Acesso ao Sistema' : 'Criar Nova Conta';
+    document.getElementById('auth-subtitle').innerText = isLoginState ? 'Entre com suas credenciais de usuário' : 'Cadastre um novo perfil no sistema';
+    document.getElementById('auth-btn').innerText = isLoginState ? 'Entrar no Sistema' : 'Cadastrar Conta';
+    document.getElementById('toggle-auth-btn').innerText = isLoginState ? 'Criar nova conta no sistema' : 'Já tenho conta. Fazer Login';
+    
+    document.getElementById('box-email').style.display = isLoginState ? 'none' : 'block';
+    document.getElementById('box-role').style.display = isLoginState ? 'none' : 'block';
+    document.getElementById('auth-email').required = !isLoginState;
+  });
+
+  document.getElementById('auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const usuario = document.getElementById('auth-usuario').value.trim();
+    const senha = document.getElementById('auth-senha').value.trim();
+    const email = document.getElementById('auth-email').value.trim();
+    const role = document.getElementById('auth-role').value;
+
+    const endpoint = isLoginState ? '/api/login' : '/api/register';
+    const payload = isLoginState ? { usuario, senha } : { usuario, email, senha, role };
+
+    const btn = document.getElementById('auth-btn');
+    btn.disabled = true;
+    btn.innerText = 'Processando...';
+
+    try {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.sucesso) {
+        if (isLoginState) {
+          sessionStorage.setItem('spa_user', data.usuario);
+          sessionStorage.setItem('spa_role', data.role || 'user');
+          liberarAcesso(data.usuario, data.role || 'user');
+        } else {
+          alert(data.mensagem || 'Cadastro realizado! Verifique seu e-mail para ativar a conta.');
+          document.getElementById('toggle-auth-btn').click();
+        }
+      } else {
+        alert('Atenção: ' + (data.erro || 'Erro na operação.'));
+      }
+    } catch (err) {
+      alert('Erro de conexão com o servidor.');
+    } finally {
+      btn.disabled = false;
+      btn.innerText = isLoginState ? 'Entrar no Sistema' : 'Cadastrar Conta';
+    }
+  });
+
+  function liberarAcesso(nomeUsuario, perfilRole) {
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('main-header').classList.remove('app-hidden');
+    document.getElementById('main-wrap').classList.remove('app-hidden');
+    document.getElementById('logged-user-display').textContent = nomeUsuario;
+    
+    const badge = document.getElementById('logged-role-badge');
+    if (perfilRole === 'admin') {
+      badge.textContent = 'Administrador';
+      badge.className = 'badge-role badge-admin';
+    } else {
+      badge.textContent = 'Usuário Comum';
+      badge.className = 'badge-role badge-user';
+    }
+  }
+
+  function fazerLogout() {
+    sessionStorage.removeItem('spa_user');
+    sessionStorage.removeItem('spa_role');
+    window.location.reload();
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const usuarioSalvo = sessionStorage.getItem('spa_user');
+    const roleSalvo = sessionStorage.getItem('spa_role');
+    if (usuarioSalvo) {
+      liberarAcesso(usuarioSalvo, roleSalvo || 'user');
+    }
+  });
+
+  function atualizarContrato() {
+    const nome = document.getElementById('nome').value.trim();
+    const cpf = document.getElementById('cpf').value.trim();
+    const end = document.getElementById('endereco').value.trim();
+    const prof = document.getElementById('c_profissao').value.trim();
+    const coren = document.getElementById('c_coren').value.trim();
+    const trat = document.getElementById('c_tratamento').value.trim() || document.getElementById('procedimento').value.trim();
+    const preco = document.getElementById('c_preco').value.trim() || document.getElementById('valorPix').value.trim();
+
+    document.getElementById('txt_nome').textContent = nome || '________________________________________';
+    document.getElementById('txt_cpf').textContent = cpf || '________________';
+    document.getElementById('txt_endereco').textContent = end || '________________________________________';
+    document.getElementById('txt_profissao').textContent = prof || '________________';
+    document.getElementById('txt_coren').textContent = coren || '________________';
+    document.getElementById('txt_tratamento').textContent = trat || '________________________________________________';
+    document.getElementById('txt_preco').textContent = preco || '________';
+
+    const hoje = new Date();
+    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    document.getElementById('txt_data_hoje').textContent = `${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`;
+  }
+
+  function imprimirPDF() {
+    atualizarContrato();
+    const agora = new Date();
+    document.getElementById('print-date').textContent = 'Emissão: ' + agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+    window.print();
+  }
+
+  function showTab(id, btnElement){
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.querySelectorAll('.mt').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if(btnElement) btnElement.classList.add('active');
+    if(id === 'view-contrato') atualizarContrato();
+    if(id === 'view-consulta') carregarClientes();
+  }
+
+  let imcGlobal = 24;
+  function calcIMC(){
+    const p=parseFloat(document.getElementById('peso').value);
+    const a=parseFloat(document.getElementById('altura').value);
+    if(!p || !a || a <= 0) {
+      imcGlobal = 0;
+      document.getElementById('imcVal').textContent = '—';
+      return;
+    }
+    imcGlobal = p/(a*a);
+    document.getElementById('imcVal').textContent=imcGlobal.toFixed(1);
+    let txt,col;
+    if(imcGlobal<18.5){txt='Abaixo';col='#4a78c9';}
+    else if(imcGlobal<25){txt='Normal';col='#4a9b7f';}
+    else if(imcGlobal<30){txt='Sobrepeso';col='#c98a3a';}
+    else {txt='Obesidade';col='#b8455f';}
+    const chip=document.getElementById('imcChip');
+    chip.textContent=txt; chip.style.color=col;
+  }
+  document.getElementById('peso').addEventListener('input',calcIMC);
+  document.getElementById('altura').addEventListener('input',calcIMC);
+  calcIMC();
+
+  function limparCadastro(){
+    if(!confirm("Tem certeza que deseja limpar os campos da ficha de cadastro?")) return;
+    document.getElementById('nome').value = '';
+    document.getElementById('cpf').value = '';
+    document.getElementById('endereco').value = '';
+    document.getElementById('telefone').value = '';
+    document.getElementById('idade').value = '';
+    document.getElementById('plano').value = 'false';
+    document.getElementById('peso').value = '70';
+    document.getElementById('altura').value = '1.65';
+    document.getElementById('meta').value = '0';
+    document.getElementById('doencas').value = 'false';
+    document.getElementById('alergias').value = 'false';
+    document.getElementById('cirurgias').value = 'false';
+    document.getElementById('quais_cirurgias').value = '';
+    document.getElementById('box-cirurgias').style.display = 'none';
+    document.getElementById('exames').value = '';
+    calcIMC();
+    atualizarContrato();
+  }
+
+  const DOLLS = {
+    frontal: `<svg viewBox="0 0 100 140" fill="none" stroke="#fff" stroke-width="2"><ellipse cx="50" cy="48" rx="26" ry="34"/><line x1="50" y1="20" x2="50" y2="80"/></svg>`,
+    lateral: `<svg viewBox="0 0 100 140" fill="none" stroke="#fff" stroke-width="2"><path d="M62 16 Q40 20 38 50 Q37 66 44 74 L40 82 Q46 88 44 96"/></svg>`,
+    colo: `<svg viewBox="0 0 100 140" fill="none" stroke="#fff" stroke-width="2"><ellipse cx="50" cy="34" rx="18" ry="22"/><path d="M40 54 Q50 64 60 54"/></svg>`
+  };
+  let currentPose = 'frontal';
+  let stream = null;
+  const video=document.getElementById('video'), still=document.getElementById('still');
+  const doll=document.getElementById('doll'), scanline=document.getElementById('scanline');
+  doll.innerHTML = DOLLS.frontal;
+
+  document.querySelectorAll('#poseTabs button').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('#poseTabs button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); currentPose=b.dataset.pose; doll.innerHTML=DOLLS[currentPose];
+    }
+  });
+
+  document.getElementById('btnCam').onclick=async()=>{
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'}});
+      video.srcObject=stream; still.style.display='none'; video.style.display='block';
+    }catch(e){ alert('Erro ao acessar a câmera.'); }
+  };
+
+  document.getElementById('btnCap').onclick=()=>{
+    if(stream){
+      const c=document.createElement('canvas'); c.width=video.videoWidth; c.height=video.videoHeight;
+      c.getContext('2d').drawImage(video,0,0,c.width,c.height);
+      still.src=c.toDataURL('image/jpeg'); still.style.display='block'; video.style.display='none';
+      scanline.style.display='block'; scanline.style.top='0';
+      let y=0; const t=setInterval(()=>{ y+=4; scanline.style.top=y+'%'; if(y>=100){clearInterval(t);scanline.style.display='none';} },16);
+      document.getElementById('btnAnalyze').disabled=false;
+
+      stream.getTracks().forEach(track => track.stop());
+      stream = null;
+    }
+  };
+
+  let globalMetrics = {}, globalPlan = [];
+  document.getElementById('btnAnalyze').onclick=()=>{
+    const imcFactor=Math.max(0,(imcGlobal-24)/12);
+    globalMetrics = {
+      papada: Math.min(1, 0.35 + imcFactor*0.5),
+      rugas_testa: 0.6,
+      flacidez_contorno: Math.max(0.15, 0.7 - imcFactor*0.4)
+    };
+    globalPlan = [];
+    if(globalMetrics.papada >= 0.6) globalPlan.push("Redução de papada (Criolipólise)");
+    if(globalMetrics.rugas_testa >= 0.5) globalPlan.push("Toxina botulínica — terço superior");
+    if(parseFloat(document.getElementById('meta').value || 0) >= 8) globalPlan.push("Encaminhamento nutricional (Meta alta)");
+
+    document.getElementById('metricsBox').innerHTML = Object.entries(globalMetrics).map(([k,v])=> `<b>${k}</b>: ${(v*100).toFixed(0)}%`).join('<br>');
+    document.getElementById('planBox').innerHTML = globalPlan.map(p=> `✅ ${p}`).join('<br>');
+    document.getElementById('ia-results').style.display='block';
+  };
+
+  const canvas = document.getElementById('bodyCanvas');
+  const ctx = canvas.getContext('2d');
+  let currentGender = 'F', currentVista = 'face', currentColor = '#d6335c', allMarks = [];
+
+  document.querySelectorAll('.tool-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tool-btn').forEach(b => { b.style.border = '1px solid var(--line)'; b.style.color = 'var(--muted)'; });
+      this.style.border = `2px solid ${this.dataset.color}`;
+      this.style.color = this.dataset.color;
+      currentColor = this.dataset.color;
+    });
+  });
+
+  function setGender(g){
+    currentGender = g;
+    document.getElementById('btnFem').style.background = g === 'F' ? 'var(--rose-d)' : 'transparent';
+    document.getElementById('btnFem').style.color = g === 'F' ? '#fff' : 'var(--muted)';
+    document.getElementById('btnMasc').style.background = g === 'M' ? 'var(--rose-d)' : 'transparent';
+    document.getElementById('btnMasc').style.color = g === 'M' ? '#fff' : 'var(--muted)';
+    drawCanvas();
+  }
+
+  function setVista(v){
+    currentVista = v;
+    document.getElementById('btnVistaFace').style.background = v === 'face' ? 'var(--rose-d)' : 'transparent';
+    document.getElementById('btnVistaFace').style.color = v === 'face' ? '#fff' : 'var(--muted)';
+    document.getElementById('btnVistaCorpo').style.background = v === 'corpo' ? 'var(--rose-d)' : 'transparent';
+    document.getElementById('btnVistaCorpo').style.color = v === 'corpo' ? '#fff' : 'var(--muted)';
+    drawCanvas();
+  }
+
+  const svgFaceFem = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700"><rect width="1000" height="700" fill="#ffffff"/><text x="320" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#a85d72" text-anchor="middle" letter-spacing="1">MAPEAMENTO FACIAL FEMININO (FRONTAL)</text><text x="730" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#a85d72" text-anchor="middle" letter-spacing="1">PERFIL LATERAL</text><g stroke="#4a3f52" stroke-width="1.8" fill="none" stroke-linejoin="round" stroke-linecap="round"><path d="M 195 240 C 180 240, 175 280, 185 315 C 190 330, 198 325, 198 315" fill="#fdfbfb"/><path d="M 445 240 C 460 240, 465 280, 455 315 C 450 330, 442 325, 442 315" fill="#fdfbfb"/><path d="M 198 190 C 198 120, 240 90, 320 90 C 400 90, 442 120, 442 190 C 445 260, 435 360, 395 425 C 360 480, 335 500, 320 500 C 305 500, 280 480, 245 425 C 205 360, 195 260, 198 190 Z" fill="#fdfbfb"/><path d="M 240 475 C 230 520, 200 560, 160 600 M 400 475 C 410 520, 440 560, 480 600" stroke="#8a8091" stroke-width="1.5"/><path d="M 225 220 Q 260 205, 290 220 M 415 220 Q 380 205, 350 220" stroke="#2b2431" stroke-width="3"/><path d="M 230 245 Q 257 230, 285 245 Q 257 260, 230 245 Z" fill="#fff" stroke="#2b2431"/><circle cx="257" cy="245" r="7" fill="#2b2431"/><path d="M 410 245 Q 383 230, 355 245 Q 383 260, 410 245 Z" fill="#fff" stroke="#2b2431"/><circle cx="383" cy="245" r="7" fill="#2b2431"/><path d="M 320 215 L 320 315 Q 312 325, 320 328 Q 328 325, 320 315" stroke="#7a6f82"/><path d="M 270 385 C 290 372, 310 375, 320 378 C 330 375, 350 372, 370 385 C 350 415, 330 420, 320 420 C 310 420, 290 415, 270 385 Z" fill="#f4dcd9" stroke="#b8455f" stroke-width="1.8"/><path d="M 220 150 Q 320 135, 420 150 M 215 175 Q 320 160, 425 175" stroke="#d6335c" stroke-dasharray="3,3"/><path d="M 310 200 L 310 215 M 330 200 L 330 215" stroke="#d6335c" stroke-width="1.5"/><path d="M 295 330 Q 280 360, 268 385 M 345 330 Q 360 360, 372 385" stroke="#d6335c" stroke-dasharray="3,3"/></g><g stroke="#4a3f52" stroke-width="1.8" fill="none" stroke-linejoin="round" stroke-linecap="round"><path d="M 720 100 C 670 100, 650 140, 650 190 C 650 205, 665 212, 670 215 C 655 225, 648 238, 658 248 C 662 252, 640 265, 635 290 C 630 305, 650 310, 665 310 C 650 320, 645 340, 665 350 C 685 360, 695 360, 695 370 C 685 380, 660 400, 650 430 C 640 460, 660 500, 690 520 C 720 535, 770 515, 795 480 C 820 440, 830 380, 830 310 C 830 190, 790 100, 720 100 Z" fill="#fdfbfb"/><path d="M 735 250 C 720 250, 715 275, 725 300 C 730 312, 738 308, 738 300" fill="#fdfbfb"/></g></svg>`;
+  const svgFaceMasc = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700"><rect width="1000" height="700" fill="#ffffff"/><text x="320" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#5a4d5e" text-anchor="middle" letter-spacing="1">MAPEAMENTO FACIAL MASCULINO (FRONTAL)</text><text x="730" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#5a4d5e" text-anchor="middle" letter-spacing="1">PERFIL LATERAL</text><g stroke="#3d3542" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"><path d="M 230 160 Q 320 120 410 160 Q 425 250 405 320 Q 380 400 355 435 Q 335 455 320 455 Q 305 455 285 435 Q 260 400 235 320 Q 215 250 230 160 Z" fill="#fdfbfb"/><path d="M 245 220 Q 280 210 300 220 M 395 220 Q 360 210 340 220" stroke="#2b2431" stroke-width="3"/><ellipse cx="270" cy="245" rx="14" ry="7" fill="#fff" stroke="#2b2431"/><circle cx="270" cy="245" r="4" fill="#2b2431"/><ellipse cx="370" cy="245" rx="14" ry="7" fill="#fff" stroke="#2b2431"/><circle cx="370" cy="245" r="4" fill="#2b2431"/><path d="M 320 230 L 320 315 L 308 322 L 332 322" stroke="#3d3542"/><path d="M 275 375 Q 320 365 365 375 Q 320 400 275 375 Z" fill="#e8cfd3" stroke="#a85d72"/><path d="M 235 400 L 285 435 M 405 400 L 355 435" stroke="#a85d72" stroke-dasharray="3,3"/></g><g stroke="#3d3542" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"><path d="M 720 100 C 680 100, 660 140, 660 190 C 660 205, 675 212, 680 215 C 665 225, 655 238, 665 248 C 670 252, 645 265, 640 290 C 635 305, 655 310, 670 310 C 655 325, 650 345, 670 355 C 690 365, 710 365, 715 385 C 700 400, 670 420, 660 450 C 650 480, 670 515, 700 530 L 760 520 C 790 480, 810 400, 810 310 C 810 190, 780 100, 720 100 Z" fill="#fdfbfb"/></g></svg>`;
+  const svgCorpoFem = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700"><rect width="1000" height="700" fill="#ffffff"/><text x="270" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#a85d72" text-anchor="middle" letter-spacing="1">CORPO ANTERIOR (FRENTE)</text><text x="730" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#a85d72" text-anchor="middle" letter-spacing="1">CORPO POSTERIOR (COSTAS)</text><g stroke="#4a3f52" stroke-width="1.6" fill="#fdfbfb" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="270" cy="80" rx="20" ry="26"/><path d="M 262 105 L 262 120 M 278 105 L 278 120"/><path d="M 262 120 C 235 122, 210 135, 205 160 L 192 280 L 208 280 L 218 190 C 228 220, 238 250, 243 270 C 230 300, 225 340, 235 410 L 245 650 L 265 650 L 268 450 C 268 450, 270 450, 270 450 C 270 450, 272 450, 272 450 L 275 650 L 295 650 L 305 410 C 315 340, 310 300, 297 270 C 302 250, 312 220, 322 190 L 332 280 L 348 280 L 335 160 C 330 135, 305 122, 278 120 Z"/><path d="M 232 175 C 250 195, 265 195, 270 185 C 275 195, 290 195, 308 175" stroke="#c98a9b" stroke-dasharray="2,2" fill="none"/><circle cx="270" cy="265" r="2" fill="#4a3f52"/></g><g stroke="#4a3f52" stroke-width="1.6" fill="#fdfbfb" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="730" cy="80" rx="20" ry="26"/><path d="M 715 75 Q 730 88 745 75" fill="#4a3f52"/><path d="M 722 105 L 722 120 M 738 105 L 738 120"/><path d="M 722 120 C 695 122, 670 135, 665 160 L 652 280 L 668 280 L 678 190 C 688 220, 698 250, 703 270 C 690 300, 685 340, 695 410 L 705 650 L 725 650 L 728 450 C 728 450, 730 450, 730 450 C 730 450, 732 450, 732 450 L 735 650 L 755 650 L 765 410 C 775 340, 770 300, 757 270 C 762 250, 772 220, 782 190 L 792 280 L 808 280 L 795 160 C 790 135, 765 122, 738 120 Z"/><path d="M 692 310 C 710 335, 730 335, 730 300 M 730 300 C 730 335, 750 335, 768 310" stroke="#c98a9b" stroke-dasharray="2,2" fill="none"/></g></svg>`;
+  const svgCorpoMasc = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700"><rect width="1000" height="700" fill="#ffffff"/><text x="270" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#5a4d5e" text-anchor="middle" letter-spacing="1">CORPO ANTERIOR MASCULINO (FIT)</text><text x="730" y="40" font-family="sans-serif" font-size="14" font-weight="bold" fill="#5a4d5e" text-anchor="middle" letter-spacing="1">CORPO POSTERIOR MASCULINO</text><g stroke="#3d3542" stroke-width="1.7" fill="#fdfbfb" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="270" cy="80" rx="20" ry="25"/><path d="M 260 104 L 260 120 M 280 104 L 280 120"/><path d="M 260 120 C 230 122, 195 135, 190 158 L 175 280 L 192 280 L 204 185 C 218 220, 230 260, 236 280 C 228 310, 228 340, 235 410 L 245 650 L 265 650 L 268 450 C 268 450, 270 450, 270 450 C 270 450, 272 450, 272 450 L 275 650 L 295 650 L 305 410 C 312 340, 312 310, 304 280 C 310 260, 322 220, 336 185 L 348 280 L 365 280 L 350 158 C 345 135, 310 122, 280 120 Z"/><path d="M 218 165 C 240 180, 265 180, 270 175 C 275 180, 300 180, 322 165" stroke="#7a6f82" stroke-width="1.2" fill="none"/><circle cx="270" cy="275" r="2" fill="#3d3542"/></g><g stroke="#3d3542" stroke-width="1.7" fill="#fdfbfb" stroke-linejoin="round" stroke-linecap="round"><ellipse cx="730" cy="80" rx="20" ry="25"/><path d="M 715 75 Q 730 86 745 75" fill="#3d3542"/><path d="M 720 104 L 720 120 M 740 104 L 740 120"/><path d="M 720 120 C 690 122, 655 135, 650 158 L 635 280 L 652 280 L 664 185 C 678 220, 690 260, 696 280 C 688 310, 688 340, 695 410 L 705 650 L 725 650 L 728 450 C 728 450, 730 450, 730 450 C 730 450, 732 450, 732 450 L 735 650 L 755 650 L 765 410 C 772 340, 772 310, 764 280 C 770 260, 782 220, 796 185 L 808 280 L 825 280 L 810 158 C 805 135, 770 122, 740 120 Z"/><path d="M 675 160 Q 730 190 785 160" stroke="#7a6f82" stroke-width="1.2" fill="none"/></g></svg>`;
+
+  const imgFF = new Image(); imgFF.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgFaceFem);
+  const imgFM = new Image(); imgFM.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgFaceMasc);
+  const imgCF = new Image(); imgCF.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgCorpoFem);
+  const imgCM = new Image(); imgCM.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgCorpoMasc);
+
+  [imgFF, imgFM, imgCF, imgCM].forEach(img => img.onload = () => drawCanvas());
+
+  function getActiveImage(){
+    return currentVista === 'face' ? (currentGender === 'F' ? imgFF : imgFM) : (currentGender === 'F' ? imgCF : imgCM);
+  }
+
+  function drawCanvas(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const activeImg = getActiveImage();
+    if (activeImg.complete && activeImg.naturalWidth !== 0) {
+      ctx.drawImage(activeImg, 0, 0, canvas.width, canvas.height);
+    }
+    const filteredMarks = allMarks.filter(m => m.gender === currentGender && m.vista === currentVista);
+    filteredMarks.forEach(m => {
+      ctx.beginPath(); ctx.strokeStyle = m.color; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.moveTo(m.x - 8, m.y - 8); ctx.lineTo(m.x + 8, m.y + 8);
+      ctx.moveTo(m.x + 8, m.y - 8); ctx.lineTo(m.x - 8, m.y + 8); ctx.stroke();
+      ctx.beginPath(); ctx.fillStyle = m.color; ctx.arc(m.x, m.y, 3, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    allMarks.push({
+      x: parseFloat(((e.clientX - rect.left) * scaleX).toFixed(2)),
+      y: parseFloat(((e.clientY - rect.top) * scaleY).toFixed(2)),
+      gender: currentGender, vista: currentVista, color: currentColor
+    });
+    drawCanvas();
+  });
+
+  function undoMark(){
+    for (let i = allMarks.length - 1; i >= 0; i--) {
+      if (allMarks[i].gender === currentGender && allMarks[i].vista === currentVista) {
+        allMarks.splice(i, 1); break;
+      }
+    }
+    drawCanvas();
+  }
+
+  function clearCanvas(){
+    allMarks = allMarks.filter(m => !(m.gender === currentGender && m.vista === currentVista));
+    drawCanvas();
+  }
+
+  // GERADOR E EXIBIDOR DO QR CODE E PIX COPIA E COLA
+  async function gerarQrCode(){
+    const valInput = document.getElementById('valorPix').value;
+    const valor = parseFloat(valInput);
+    if(!valInput || isNaN(valor) || valor <= 0) return alert("Insira um valor válido.");
+    const btnQr = document.getElementById('btnQrPix');
+    btnQr.disabled = true; btnQr.textContent = 'Gerando...';
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/gerar-qrcode/${valor}`);
+      if (!res.ok) throw new Error(`Erro na API (${res.status})`);
+      const data = await res.json();
+
+      document.getElementById('qrHolder').innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; gap:12px;">
+          <img src="${data.qrCode}" alt="PIX QR Code" style="max-width:200px; border:1px solid var(--line); border-radius:12px; padding:8px; background:#fff;">
+          <div style="width:100%; max-width:400px;">
+            <label style="text-align:left; font-weight:bold; margin-bottom:4px;">Pix Copia e Cola:</label>
+            <input type="text" id="pixCopiaCola" value="${data.payloadPix}" readonly style="font-size:11px; font-family:monospace; background:#f5f5f5;">
+            <button class="btn btn-ok" style="margin-top:8px; font-size:13px; padding:8px;" onclick="copiarPix()">📋 Copiar Código Pix</button>
+          </div>
+        </div>
+      `;
+    } catch(e) {
+      alert("Falha ao gerar QR Code PIX.");
+    } finally {
+      btnQr.disabled = false; btnQr.textContent = 'Gerar QR Code PIX';
+    }
+  }
+
+  function copiarPix() {
+    const inputPix = document.getElementById('pixCopiaCola');
+    if (!inputPix) return;
+    inputPix.select();
+    navigator.clipboard.writeText(inputPix.value);
+    alert('Código Pix Copia e Cola copiado para a área de transferência!');
+  }
+
+  async function salvarBanco(){
+    const nomeVal = document.getElementById('nome').value.trim();
+    const cpfVal = document.getElementById('cpf').value.trim();
+    if(!nomeVal || !cpfVal) {
+      alert("NOME e CPF são obrigatórios.");
+      showTab('view-cadastro', document.querySelectorAll('.mt')[0]);
+      document.getElementById('nome').focus();
+      return;
+    }
+
+    const saveButtons = document.querySelectorAll('.btn-save');
+    saveButtons.forEach(btn => { btn.disabled = true; btn.textContent = '⏳ Salvando...'; });
+
+    const payload = {
+      paciente: {
+        nome: nomeVal,
+        cpf: cpfVal,
+        endereco: document.getElementById('endereco').value.trim(),
+        telefone_emergencia: document.getElementById('telefone').value.trim(),
+        idade: parseInt(document.getElementById('idade').value) || 0,
+        peso: parseFloat(document.getElementById('peso').value) || 0,
+        altura: parseFloat(document.getElementById('altura').value) || 0,
+        imc: parseFloat(imcGlobal.toFixed(2)) || 0,
+        meta: parseFloat(document.getElementById('meta').value) || 0,
+        plano_saude: document.getElementById('plano').value === 'true',
+        doencas_cronicas: document.getElementById('doencas').value === 'true',
+        alergias: document.getElementById('alergias').value === 'true',
+        cirurgias_previas: document.getElementById('cirurgias').value === 'true',
+        quais_cirurgias: document.getElementById('quais_cirurgias').value.trim(),
+        exames_complementares: document.getElementById('exames').value.trim()
+      },
+      contrato: {
+        profissao: document.getElementById('c_profissao').value.trim(),
+        coren: document.getElementById('c_coren').value.trim(),
+        tratamento_contratado: document.getElementById('c_tratamento').value.trim(),
+        valor_total: document.getElementById('c_preco').value.trim()
+      },
+      analise_ia: { metricas: globalMetrics || {}, plano: globalPlan || [] },
+      procedimento: {
+        descricao: document.getElementById('procedimento').value.trim(),
+        intercorrencias: document.getElementById('intercorrencias').value.trim(),
+        conclusao: document.getElementById('conclusao').value.trim(),
+        marcacoes: allMarks || []
+      }
+    };
+
+    try {
+      const req = await fetch(`${API_BASE_URL}/api/salvar-ficha`, {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload)
+      });
+      if (req.ok) {
+        alert("Ficha e Contrato salvos com sucesso no SPA Ana Paula Merêncio!");
+      } else {
+        alert("Erro no servidor ao salvar.");
+      }
+    } catch(e) {
+      alert("Não foi possível conectar ao servidor backend.");
+    } finally {
+      saveButtons.forEach(btn => { btn.disabled = false; btn.textContent = '💾 Salvar Ficha no Sistema'; });
+    }
+  }
+
+  async function carregarClientes() {
+    const tbody = document.getElementById('lista-clientes-body');
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:15px; text-align:center; color:var(--muted);">⏳ Buscando dados no sistema SPA Ana Paula Merêncio...</td></tr>';
+    
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/fichas`);
+      if (!res.ok) throw new Error('Falha ao buscar fichas');
+      listaFichas = await res.json();
+      renderizarTabela(listaFichas);
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:15px; text-align:center; color:var(--hi);">❌ Erro ao carregar dados do sistema.</td></tr>';
+    }
+  }
+
+  function renderizarTabela(fichas) {
+    const tbody = document.getElementById('lista-clientes-body');
+    if (!fichas || fichas.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:15px; text-align:center; color:var(--muted);">Nenhum cliente cadastrado foi encontrado.</td></tr>';
+      return;
+    }
+
+    const currentRole = sessionStorage.getItem('spa_role') || 'user';
+    const isAdmin = currentRole === 'admin';
+
+    tbody.innerHTML = fichas.map(f => {
+      const nome = f.paciente?.nome || 'Não informado';
+      const cpf = f.paciente?.cpf || 'Não informado';
+      const tel = f.paciente?.telefone_emergencia || '—';
+      const proc = f.contrato?.tratamento_contratado || f.procedimento?.descricao || '—';
+      const dataFormatada = f.data_criacao ? new Date(f.data_criacao).toLocaleDateString('pt-BR') : '—';
+      const id = f._id;
+
+      const deleteBtnHTML = isAdmin
+        ? `<button class="btn" style="width:auto; padding:6px 12px; font-size:12px; background:var(--hi);" onclick="deletarCliente('${id}')">🗑️ Deletar</button>`
+        : `<button class="btn" style="width:auto; padding:6px 12px; font-size:12px; background:#ccc; cursor:not-allowed;" title="Apenas Administradores podem excluir" disabled>🔒 Deletar</button>`;
+
+      return `
+        <tr style="border-bottom: 1px solid var(--line);">
+          <td style="padding:12px; font-weight:bold;">${nome}</td>
+          <td style="padding:12px;">${cpf}</td>
+          <td style="padding:12px;">${tel}</td>
+          <td style="padding:12px;">${proc}</td>
+          <td style="padding:12px;">${dataFormatada}</td>
+          <td style="padding:12px; text-align:center; white-space:nowrap;">
+            <button class="btn" style="width:auto; padding:6px 12px; font-size:12px; margin-right:5px; background:var(--rose-d);" onclick="abrirModalEditar('${id}')">✏️ Editar</button>
+            ${deleteBtnHTML}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function filtrarClientes() {
+    const termo = document.getElementById('search-input').value.toLowerCase().trim();
+    if (!termo) {
+      renderizarTabela(listaFichas);
+      return;
+    }
+    const filtrados = listaFichas.filter(f => {
+      const nome = (f.paciente?.nome || '').toLowerCase();
+      const cpf = (f.paciente?.cpf || '').toLowerCase();
+      return nome.includes(termo) || cpf.includes(termo);
+    });
+    renderizarTabela(filtrados);
+  }
+
+  function abrirModalEditar(id) {
+    const ficha = listaFichas.find(f => f._id === id);
+    if (!ficha) return alert('Ficha não encontrada.');
+
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-nome').value = ficha.paciente?.nome || '';
+    document.getElementById('edit-cpf').value = ficha.paciente?.cpf || '';
+    document.getElementById('edit-endereco').value = ficha.paciente?.endereco || '';
+    document.getElementById('edit-telefone').value = ficha.paciente?.telefone_emergencia || '';
+    document.getElementById('edit-idade').value = ficha.paciente?.idade || 0;
+    document.getElementById('edit-peso').value = ficha.paciente?.peso || 0;
+    document.getElementById('edit-altura').value = ficha.paciente?.altura || 0;
+    document.getElementById('edit-procedimento').value = ficha.procedimento?.descricao || ficha.contrato?.tratamento_contratado || '';
+    document.getElementById('edit-valor').value = ficha.contrato?.valor_total || '';
+
+    document.getElementById('modal-editar').style.display = 'flex';
+  }
+
+  function fecharModalEditar() {
+    document.getElementById('modal-editar').style.display = 'none';
+  }
+
+  async function salvarEdicaoCliente() {
+    const id = document.getElementById('edit-id').value;
+    const ficha = listaFichas.find(f => f._id === id);
+    if (!ficha) return alert('Erro ao identificar ficha.');
+
+    const btn = document.getElementById('btn-salvar-edicao');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    const p = ficha.paciente || {};
+    const c = ficha.contrato || {};
+    const proc = ficha.procedimento || {};
+
+    p.nome = document.getElementById('edit-nome').value.trim();
+    p.cpf = document.getElementById('edit-cpf').value.trim();
+    p.endereco = document.getElementById('edit-endereco').value.trim();
+    p.telefone_emergencia = document.getElementById('edit-telefone').value.trim();
+    p.idade = parseInt(document.getElementById('edit-idade').value) || 0;
+    p.peso = parseFloat(document.getElementById('edit-peso').value) || 0;
+    p.altura = parseFloat(document.getElementById('edit-altura').value) || 0;
+    if (p.altura > 0) p.imc = parseFloat((p.peso / (p.altura * p.altura)).toFixed(2));
+
+    proc.descricao = document.getElementById('edit-procedimento').value.trim();
+    c.tratamento_contratado = document.getElementById('edit-procedimento').value.trim();
+    c.valor_total = document.getElementById('edit-valor').value.trim();
+
+    const payload = {
+      ...ficha,
+      paciente: p,
+      contrato: c,
+      procedimento: proc
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/fichas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.sucesso) {
+        alert('Cliente e ficha atualizados com sucesso no SPA Ana Paula Merêncio!');
+        fecharModalEditar();
+        await carregarClientes();
+      } else {
+        alert('Erro ao atualizar: ' + (data.erro || 'Falha no servidor'));
+      }
+    } catch (err) {
+      alert('Erro de conexão ao atualizar registro.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '💾 Salvar Alterações';
+    }
+  }
+
+  async function deletarCliente(id) {
+    const userRole = sessionStorage.getItem('spa_role');
+
+    if (userRole !== 'admin') {
+      alert('🔒 Acesso negado: Seu perfil não possui permissão para excluir registros.');
+      return;
+    }
+
+    if (!confirm('Tem certeza que deseja DELETAR este registro permanentemente do sistema do SPA Ana Paula Merêncio?')) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/fichas/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-user-role': userRole
+        }
+      });
+      const data = await res.json();
+      if (data.sucesso) {
+        alert('Registro deletado com sucesso!');
+        await carregarClientes();
+      } else {
+        alert('Erro ao deletar: ' + (data.erro || 'Falha no servidor'));
+      }
+    } catch (err) {
+      alert('Erro de conexão ao deletar registro.');
+    }
+  }
+
+  atualizarContrato();
+</script>
+</body>
+</html>
