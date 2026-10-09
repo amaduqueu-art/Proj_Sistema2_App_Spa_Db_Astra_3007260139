@@ -1,4 +1,4 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -6,6 +6,26 @@ const QRCode = require('qrcode');
 const { DataAPIClient } = require('@datastax/astra-db-ts');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'secreta_super_segura_123';
+
+function verificarToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ sucesso: false, erro: 'Acesso negado. Token não fornecido.' });
+
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ sucesso: false, erro: 'Acesso negado. Token mal formatado.' });
+
+  try {
+    const decodificado = jwt.verify(token, JWT_SECRET);
+    req.usuario = decodificado;
+    next();
+  } catch (error) {
+    return res.status(401).json({ sucesso: false, erro: 'Token inválido ou expirado.' });
+  }
+}
 
 const app = express();
 
@@ -121,11 +141,14 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ sucesso: false, erro: 'Nome de usuário ou e-mail já cadastrado.' });
     }
 
+    const salt = await bcrypt.genSalt(10);
+    const senhaHash = await bcrypt.hash(senha, salt);
+
     const token = crypto.randomBytes(32).toString('hex');
     const novoUsuario = {
       usuario,
       email,
-      senha,
+      senha: senhaHash,
       role: perfilFinal,
       isConfirmado: false,
       tokenConfirmacao: token,
@@ -203,19 +226,32 @@ app.get('/api/confirmar/:token', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { usuario, senha } = req.body;
-    const user = await usuariosColl.findOne({ usuario, senha });
+    const user = await usuariosColl.findOne({ usuario });
     
     if (!user) {
       return res.status(401).json({ sucesso: false, erro: 'Usuário ou senha inválidos.' });
     }
+    
+    const senhaValida = await bcrypt.compare(senha, user.senha);
+    if (!senhaValida) {
+      return res.status(401).json({ sucesso: false, erro: 'Usuário ou senha inválidos.' });
+    }
+
     if (!user.isConfirmado) {
       return res.status(401).json({ sucesso: false, erro: 'Conta inativa. Por favor, confirme seu e-mail antes de acessar.' });
     }
     
+    const token = jwt.sign(
+      { id: user._id, usuario: user.usuario, role: user.role || 'user' },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
     return res.status(200).json({ 
       sucesso: true, 
       role: user.role || 'user', 
-      usuario: user.usuario 
+      usuario: user.usuario,
+      token
     });
   } catch (error) {
     return res.status(500).json({ sucesso: false, erro: 'Erro no servidor durante o login.' });
@@ -227,7 +263,7 @@ app.post('/api/login', async (req, res) => {
 // -------------------------------------------------------------
 
 // 4. Salvar Ficha
-app.post('/api/salvar-ficha', async (req, res) => {
+app.post('/api/salvar-ficha', verificarToken, async (req, res) => {
   try {
     const novaFicha = {
       ...req.body,
@@ -243,7 +279,7 @@ app.post('/api/salvar-ficha', async (req, res) => {
 });
 
 // 5. Listar Fichas
-app.get('/api/fichas', async (req, res) => {
+app.get('/api/fichas', verificarToken, async (req, res) => {
   try {
     const fichas = await fichasColl.find({}, { sort: { data_criacao: -1 } }).toArray();
     return res.status(200).json(fichas);
@@ -253,7 +289,7 @@ app.get('/api/fichas', async (req, res) => {
 });
 
 // 5.1 Atualizar Ficha (PUT)
-app.put('/api/fichas/:id', async (req, res) => {
+app.put('/api/fichas/:id', verificarToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
@@ -272,9 +308,9 @@ app.put('/api/fichas/:id', async (req, res) => {
 });
 
 // 5.2 Deletar Ficha com Proteção RBAC (DELETE)
-app.delete('/api/fichas/:id', async (req, res) => {
+app.delete('/api/fichas/:id', verificarToken, async (req, res) => {
   try {
-    const userRole = req.headers['x-user-role'];
+    const userRole = req.usuario.role;
 
     if (userRole !== 'admin') {
       return res.status(403).json({ 
